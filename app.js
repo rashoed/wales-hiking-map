@@ -217,7 +217,10 @@
   }
   function updateLine(id, lines) { if (map?.getSource(id)) map.getSource(id).setData(featureCollection(lines)); }
   function refreshLines() {
-    if (!map?.getSource('track')) return;
+    if (!map?.getSource('track')) {
+      document.dispatchEvent(new Event('atlas:route-changed'));
+      return;
+    }
     updateLine('track', segments.map(seg => seg.map(p => p.slice(0,2))));
     updateLine('corridor', segments.length ? [] : [CORRIDOR]);
     updateLine('measure', measurePoints.length === 2 ? [measurePoints] : []);
@@ -453,7 +456,7 @@
       },'danger'));
     }
     body.append(el('div','divider'));
-    body.append(para('Версия 0.3 · карта требует интернет. Это ранний планировщик, а не автономный походный навигатор.', 'help'));
+    body.append(para('Версия 0.4 · фоновая карта требует интернет. Это ранний планировщик, а не автономный походный навигатор.', 'help'));
   }
   async function importBackup(file) {
     if (!file) return;
