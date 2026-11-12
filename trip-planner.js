@@ -346,6 +346,36 @@
     }, 'primary'));
     body.append(btn('Назад', openOverview));
   }
+  function placesNearStage(from, to) {
+    if (!path) return [];
+    return atlas.getPoints().map(p => {
+      const projection = projectToPath([Number(p.lng), Number(p.lat)]);
+      return { p, projection };
+    }).filter(x => x.projection &&
+      x.projection.at >= from - 300 && x.projection.at <= to + 300 &&
+      x.projection.gap <= 2500)
+      .sort((a, b) => a.projection.at - b.projection.at);
+  }
+  function renderNearbyPlaces(from, to) {
+    const places = placesNearStage(from, to);
+    const section = node('div', 'trip-nearby');
+    section.append(node('div', 'section-label', 'Места рядом с этапом'));
+    if (!places.length) {
+      section.append(node('p', 'help', 'Пока нет точек в пределах 2,5 км от линии этого этапа.'));
+      return section;
+    }
+    for (const { p, projection } of places) {
+      const row = btn('', () => atlas.openPoint(p.id), 'item-row');
+      const body = node('span', 'item-main');
+      body.append(node('strong', '', p.title),
+        node('small', '', (projection.gap < 100 ? 'На треке / рядом' :
+          Math.round(projection.gap) + ' м от GPX по прямой') +
+          ' · ' + formatKm(Math.max(0, projection.at - from)) + ' от начала этапа'));
+      row.append(node('span', 'item-icon', '⌖'), body, node('span', 'chevron', '›'));
+      section.append(row);
+    }
+    return section;
+  }
   function openDay(i) {
     if (!plan || i < 0 || i >= daysCount()) return;
     selectedDay = i; redraw();
@@ -353,7 +383,7 @@
     const body = atlas.showSheet('День ' + (i + 1) + ' из ' + daysCount());
     body.append(node('p', 'trip-lead', 'Участок ' + formatKm(from - plan.start) +
       '–' + formatKm(to - plan.start) + ' от начала поездки'));
-    body.append(detailMetrics(data), svgProfile(data.lines));
+    body.append(detailMetrics(data), svgProfile(data.lines), renderNearbyPlaces(from, to));
     const actions = node('div', 'button-row');
     actions.append(btn('Показать на карте', () => {
       atlas.closeSheet(); redraw(); fitSection(from, to);
