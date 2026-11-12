@@ -499,6 +499,14 @@
     showSheet: title => { showSheet(title); return $('sheet-content'); },
     closeSheet,
     toast,
+    openPoint,
+    resetTools: () => {
+      addMode = false;
+      measureMode = false;
+      measurePoints = [];
+      setToolState();
+      refreshLines();
+    },
     createNightPoint: (coordinates, day) => openForm({
       title: 'Ночёвка, день ' + day,
       category: 'night',
