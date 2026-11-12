@@ -94,6 +94,9 @@
       localChanged = preserveLocalPoints;
       lastExportRevision = '';
       persist();
+      document.dispatchEvent(new CustomEvent('atlas:shared-data', {
+        detail: { stagePlan: data.stagePlan || null }
+      }));
       refreshStats();
       refreshLines();
       refreshMarkers();
@@ -117,7 +120,8 @@
     lastExportRevision = revision;
     persist();
     download('shared-data.json', JSON.stringify({
-      schema: 1, revision, routeName, points, segments
+      schema: 1, revision, routeName, points, segments,
+      stagePlan: window.WalesTripPlanner?.exportPlan?.() || null
     }), 'application/json');
     toast('Файл скачан. Загрузите shared-data.json в папку data репозитория GitHub.');
   }
@@ -203,6 +207,7 @@
     updateLine('track', segments.map(seg => seg.map(p => p.slice(0,2))));
     updateLine('corridor', segments.length ? [] : [CORRIDOR]);
     updateLine('measure', measurePoints.length === 2 ? [measurePoints] : []);
+    document.dispatchEvent(new Event('atlas:route-changed'));
   }
   function refreshMarkers() {
     if (!map) return;
@@ -485,5 +490,21 @@
     loadPublishedData();
     if ('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
   }
+  // Non-privileged read API for the separate day planner. User content is still
+  // local or from the explicitly published shared-data.json.
+  window.WalesAtlas = {
+    getMap: () => map,
+    getSegments: () => segments,
+    getPoints: () => points,
+    showSheet: title => { showSheet(title); return $('sheet-content'); },
+    closeSheet,
+    toast,
+    createNightPoint: (coordinates, day) => openForm({
+      title: 'Ночёвка, день ' + day,
+      category: 'night',
+      lat: coordinates[1],
+      lng: coordinates[0]
+    }, coordinates)
+  };
   init();
 })();
