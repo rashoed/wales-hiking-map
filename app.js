@@ -73,9 +73,9 @@
       const data = await response.json();
       if (!isSharedData(data)) throw new Error('Некорректный формат общего маршрута');
 
-      if (!force && hasLocalTrack) {
-        // Keep an imported/offline GPX. Never replace a device's existing route
-        // in the background, even if a newer GitHub revision is published.
+      if (!force && hasLocalTrack && (localChanged || sharedRevision === data.revision)) {
+        // Preserve unsynced local edits and skip already-current published copies.
+        // A newer published revision updates devices without local changes.
         refreshStats();
         return;
       }
