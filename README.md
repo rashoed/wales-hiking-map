@@ -1,25 +1,69 @@
-# Wales Hiking Map
+# Wales Trail Atlas
 
-Mobile-first hiking map for the Offa's Dyke Path in Wales.
+A lightweight, mobile-first personal hiking map for Wales and the Offa's Dyke Path.
 
-## First prototype
+## Current MVP (v0.1)
 
-The initial MVP package is ready. To put the web app online, upload the **contents** of the provided `wales-hiking-map-mvp.zip` archive to the root of this repository. The site consists of `index.html`, `app.js`, `styles.css`, `sw.js`, `manifest.webmanifest`, and the `icons/` folder.
+- Interactive MapLibre map with a minimalist OpenFreeMap basemap.
+- Initial points: Chepstow, Tintern Abbey, Monmouth, Pandy, Hay-on-Wye.
+- GPX track import (including elevation data when present). Saved in this device's browser.
+- GPS position while the app is open, track distance and approximate time, estimate of remaining track distance.
+- Two-tap straight-line distance measurement (clearly distinguished from path distance).
+- Add, edit, delete and filter points; add by clicking the map or pasting a Google Maps URL **containing coordinates**.
+- Descriptions and optional image URLs, loaded only when opening a point.
+- JSON backup export/import to move data between devices.
+- Installable PWA shell. **Map tiles are not yet available offline.**
 
-Features in the MVP: OpenFreeMap/MapLibre basemap, GPX import, GPS position, editable points of interest and overnight stops, distance measuring, and JSON export/import of locally stored changes.
+Starter towns are connected by a **dashed planning corridor** solely to illustrate the region; this is NOT a walkable route. Import a trusted GPX file to see a real trail.
 
-Important: this version does **not** provide fully offline map tiles or cross-device cloud sync.
+## Publish (free)
 
-## Publish through GitHub Pages
+This site is static: no Node build, no API keys, no database.
 
-Go to **Settings → Pages**, select **Deploy from a branch**, choose `main` and `/ (root)`, then save.
+1. Upload all files and folders to the root of a GitHub repository.
+2. GitHub: **Settings → Pages → Build and deployment → Deploy from a branch → main / (root)** → Save.
+3. When GitHub finishes publishing, open `https://rashoed.github.io/wales-hiking-map/`.
+4. On iPhone: open the site in Safari and choose **Share → Add to Home Screen**.
 
-Site URL: https://rashoed.github.io/wales-hiking-map/
+Alternatively: create a Cloudflare Pages project, connect the GitHub repo, choose **None / static site**, leave build command empty and set output directory to `.` (repository root). Cloudflare automatically deploys later commits.
 
-## Development
+## Local preview
 
-The app uses plain HTML, CSS and JavaScript. No build step is required. To preview locally, run `python3 -m http.server 8000` in this directory and open http://localhost:8000.
+Serve this folder over HTTP:
 
-## Privacy
+```sh
+python3 -m http.server 8000
+```
 
-Do not commit private trip notes or location history to this public repository. User edits in the prototype are browser-local.
+Open http://localhost:8000. GPS and service workers need HTTPS in production (localhost is allowed for development).
+
+## Getting a real GPX
+
+- Official trail overview: https://www.gov.uk/government/publications/visit-a-national-trail-in-wales/offas-dyke-path-national-trail
+- GPX download reference: https://www.visitdeanwye.co.uk/trails/the-offas-dyke-path
+
+Check the route's accuracy, diversions and licensing before using/distributing third-party tracks. The current code does not bundle one.
+
+## Privacy and backup
+
+All custom points and imported tracks stay in browser `localStorage`. There is **no login or synchronization between devices**. Export a backup through the ⋯ menu and keep the downloaded JSON somewhere safe. Browser data can be cleared or evicted by iOS.
+
+GPS uses the device browser's geolocation, with permission. It will not keep tracking reliably with iPhone screen locked. Map tiles require network requests to the provider. External photos load only if a point card is opened.
+
+## Roadmap
+
+- Offline **basemap** packs after choosing a provider/storage method that explicitly permits this use. OpenFreeMap has per-download limits; do not prefetch the whole region indiscriminately.
+- Smooth elevation charts, ascent ahead and separate daily stages.
+- Walking-network routing to arbitrary points, not straight-line estimates.
+- Optional private cloud synchronization.
+- Smart Google Maps short-link resolution and optional place metadata enrichment, subject to source API conditions.
+- Photo uploads and optimization.
+- Device testing for iOS Safari and PWA installation.
+
+## Technology
+
+Plain HTML/CSS/JavaScript + MapLibre GL JS v5 + OpenFreeMap. No build step or app store payment.
+
+OpenFreeMap documentation: https://openfreemap.org/quick_start/
+
+**Safety:** this is a planning prototype, not a certified navigation system. Carry a separately downloaded offline map and GPX, and do not rely on a website alone in remote terrain.
