@@ -235,6 +235,7 @@
     if (!validPlan(saved, signature) && validPlan(lastPublishedPlan, signature)) plan = lastPublishedPlan;
     if (selectedDay >= daysCount()) selectedDay = -1;
     redraw();
+    atlas.refreshStats();
   }
   function fitSection(from, to) {
     if (!map || !path) return;
@@ -464,6 +465,14 @@
     map.on('load', () => { prepareLayers(); recalculate(); });
     if (map.isStyleLoaded()) { prepareLayers(); recalculate(); }
   }
-  window.WalesTripPlanner = { exportPlan: () => plan ? JSON.parse(JSON.stringify(plan)) : null };
+  window.WalesTripPlanner = {
+    exportPlan: () => plan ? JSON.parse(JSON.stringify(plan)) : null,
+    getOverview: () => {
+      if (!plan || !path) return null;
+      const info = summary(plan.start, plan.end);
+      return { metres: info.metres, ascent: info.ascent, start: plan.start, end: plan.end,
+        days: daysCount(), label: plan.scoped ? 'CHEPSTOW → HAY-ON-WYE' : 'ВЕСЬ GPX' };
+    }
+  };
   init();
 })();
