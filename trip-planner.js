@@ -203,7 +203,10 @@
     }
   }
   function redraw() {
-    if (!map || !path || !plan) return;
+    if (!path || !plan) return;
+    const counter = $('stage-count');
+    if (counter) counter.textContent = String(daysCount());
+    if (!map) return;
     prepareLayers();
     setGeoSource('trip-section', slice(plan.start, plan.end));
     setGeoSource('trip-day', selectedDay >= 0 && selectedDay < daysCount()
@@ -214,8 +217,6 @@
       fab.hidden = selectedDay < 0;
       fab.textContent = selectedDay >= 0 ? 'День ' + (selectedDay + 1) + ' · открыть' : '';
     }
-    const counter = $('stage-count');
-    if (counter) counter.textContent = String(daysCount());
   }
   function recalculate() {
     const segs = atlas.getSegments();
@@ -451,19 +452,23 @@
   function init() {
     map = atlas.getMap();
     const openButton = $('open-stages');
-    if (!map || !openButton) return;
+    if (!openButton) return;
     openButton.addEventListener('click', openOverview);
     $('trip-current').addEventListener('click', () => {
       if (selectedDay >= 0) openDay(selectedDay);
     });
     $('trip-cancel').addEventListener('click', cancelMove);
-    map.on('click', onMapClick);
     document.addEventListener('atlas:route-changed', recalculate);
     document.addEventListener('atlas:shared-data', event => {
       applyPublishedStagePlan(event.detail?.stagePlan);
     });
-    map.on('load', () => { prepareLayers(); recalculate(); });
-    if (map.isStyleLoaded()) { prepareLayers(); recalculate(); }
+    if (map) {
+      map.on('click', onMapClick);
+      map.on('load', () => { prepareLayers(); recalculate(); });
+      if (map.isStyleLoaded()) prepareLayers();
+    }
+    // GPX stages remain readable even when the map library cannot load.
+    recalculate();
   }
   window.WalesTripPlanner = {
     exportPlan: () => plan ? JSON.parse(JSON.stringify(plan)) : null,
