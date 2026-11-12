@@ -16,6 +16,7 @@
   let editBoundary = -1;
   let stageMarkers = [];
   let lastPublishedPlan = null;
+  let lastAutoFocusKey = '';
 
   const node = (tag, cls, text) => {
     const e = document.createElement(tag);
@@ -237,6 +238,13 @@
     if (selectedDay >= daysCount()) selectedDay = -1;
     redraw();
     atlas.refreshStats();
+    // Wait until the app's own onload fitTrack finishes, then focus this trip.
+    if (map && map.isStyleLoaded() && lastAutoFocusKey !== signature) {
+      lastAutoFocusKey = signature;
+      Promise.resolve().then(() => {
+        if (plan && path) fitSection(plan.start, plan.end);
+      });
+    }
   }
   function fitSection(from, to) {
     if (!map || !path) return;
