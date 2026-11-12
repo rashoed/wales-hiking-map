@@ -58,38 +58,58 @@
         Number.isFinite(Number(p[1])) && Math.abs(Number(p[0])) <= 180 && Math.abs(Number(p[1])) <= 90));
   }
   async function loadPublishedData(force = false) {
+    // The public itinerary is read-only: local edits never leave this browser.
+    // Importantly, a locally edited POI must not prevent an empty device from
+    // getting the published track.
+    const hasLocalTrack = segments.length > 0;
+    if (!force && !hasLocalTrack) {
+      $('route-note').textContent = 'Загружаю общий маршрут из GitHub…';
+    }
     try {
       const response = await fetch('./data/shared-data.json', { cache: 'no-store' });
-      if (response.status === 404) {
-        if (force) toast('Общий маршрут пока не опубликован в GitHub.');
-        return;
-      }
-      if (!response.ok) throw new Error('HTTP ' + response.status);
+      if (!response.ok) throw new Error(response.status === 404
+        ? 'Файл общего маршрута не опубликован (404)'
+        : 'HTTP ' + response.status);
       const data = await response.json();
-      if (!isSharedData(data)) throw new Error('Некорректный формат общих данных');
-      if (localChanged && lastExportRevision === data.revision) {
-        localChanged = false;
-        sharedRevision = data.revision;
-        persist();
-        if (force) toast('Твои изменения уже опубликованы в GitHub.');
+      if (!isSharedData(data)) throw new Error('Некорректный формат общего маршрута');
+
+      if (!force && hasLocalTrack) {
+        // Keep an imported/offline GPX. Never replace a device's existing route
+        // in the background, even if a newer GitHub revision is published.
+        refreshStats();
         return;
       }
-      if (localChanged && !force) return; // Never silently erase unsynced edits.
-      if (force && !window.confirm('Заменить текущие точки и трек опубликованной версией из GitHub? Локальные изменения будут потеряны.')) return;
-      if (!force && sharedRevision === data.revision) return;
-      points = data.points;
+
+      if (force && localChanged && !window.confirm(
+        'Заменить текущие точки и трек опубликованной версией из GitHub? Локальные изменения будут потеряны.'
+      )) { refreshStats(); return; }
+
+      const preserveLocalPoints = !force && localChanged;
+      // When the phone has only edited points, use the published GPX but retain
+      // its entire local point list (including deleted and renamed items).
+      if (!preserveLocalPoints) points = data.points;
       segments = normalizeSegments(data.segments);
       routeName = data.routeName;
       sharedRevision = data.revision;
-      localChanged = false;
+      localChanged = preserveLocalPoints;
       lastExportRevision = '';
       persist();
-      refreshStats(); refreshLines(); refreshMarkers();
+      refreshStats();
+      refreshLines();
+      refreshMarkers();
       if (segments.length) fitTrack();
-      if (force) { closeSheet(); toast('Опубликованный маршрут загружен.'); }
+      if (force) closeSheet();
+      toast(preserveLocalPoints
+        ? 'Общий маршрут загружен. Локальные точки сохранены.'
+        : 'Общий маршрут загружен из GitHub.');
     } catch (error) {
-      if (force) toast('Не удалось загрузить общие данные: ' + error.message);
-      else console.warn('Published route unavailable:', error);
+      if (!segments.length) {
+        refreshStats();
+        $('route-note').textContent = 'Общий маршрут не загрузился: ' + error.message
+          + '. Проверь интернет или нажми ⋯ → Загрузить опубликованную версию.';
+      }
+      toast('Ошибка загрузки маршрута: ' + error.message);
+      console.warn('Published route unavailable:', error);
     }
   }
   function downloadSharedData() {
@@ -414,7 +434,7 @@
       },'danger'));
     }
     body.append(el('div','divider'));
-    body.append(para('Версия 0.1 · карта требует интернет. Это ранний планировщик, а не автономный походный навигатор.', 'help'));
+    body.append(para('Версия 0.3 · карта требует интернет. Это ранний планировщик, а не автономный походный навигатор.', 'help'));
   }
   async function importBackup(file) {
     if (!file) return;
