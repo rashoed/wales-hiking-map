@@ -184,15 +184,29 @@
   }
   function refreshStats() {
     const stats = statistics();
-    $('route-label').textContent = stats.total ? (routeName || 'ЗАГРУЖЕННЫЙ GPX') : 'МАРШРУТ ЕЩЁ НЕ ЗАГРУЖЕН';
-    $('route-distance').textContent = stats.total ? km(stats.total) : '—';
-    $('route-ascent').textContent = stats.total && stats.hasElevation ? '≈ +' + Math.round(stats.ascent) + ' м' : '—';
-    $('route-time').textContent = stats.total ? '≈ ' + duration(minutesOfWalking(stats.total, stats.ascent)) : '—';
+    const trip = window.WalesTripPlanner?.getOverview?.();
+    const active = stats.total > 0 && trip && trip.metres > 0;
+    $('route-label').textContent = active
+      ? trip.label + ' · ' + trip.days + ' ДНЕЙ'
+      : (stats.total ? (routeName || 'ЗАГРУЖЕННЫЙ GPX') : 'МАРШРУТ ЕЩЁ НЕ ЗАГРУЖЕН');
+    const metres = active ? trip.metres : stats.total;
+    const ascent = active ? trip.ascent : stats.ascent;
+    $('route-distance').textContent = metres ? km(metres) : '—';
+    $('route-ascent').textContent = metres && (active || stats.hasElevation) ? '≈ +' + Math.round(ascent) + ' м' : '—';
+    $('route-time').textContent = metres ? '≈ ' + duration(minutesOfWalking(metres, ascent)) : '—';
     if (stats.total) {
-      let note = 'Расчёт вдоль импортированного GPX. Время приблизительное (3,8 км/ч плюс подъёмы).';
+      let note = active
+        ? 'Выделен участок похода. Весь импортированный GPX: ' + km(stats.total) + '. Разбивка на дни предварительная.'
+        : 'Расчёт вдоль импортированного GPX. Время приблизительное (3,8 км/ч плюс подъёмы).';
       if (gps) {
         const near = nearestOnTrack([gps.lng, gps.lat], stats);
-        if (near) note = 'До конца трека ≈ ' + km(Math.max(0, stats.total - near.along)) + ' · до линии маршрута ≈ ' + km(near.gap) + '. Оценка без учёта отклонений и остановок.';
+        if (near) {
+          note = active
+            ? 'По треку до конца поездки ≈ ' + km(Math.max(0, trip.end - near.along)) +
+              ' · до линии GPX по прямой ≈ ' + km(near.gap) + '. Без отклонений и остановок.'
+            : 'До конца GPX ≈ ' + km(Math.max(0, stats.total - near.along)) +
+              ' · до линии ≈ ' + km(near.gap) + '. Без отклонений и остановок.';
+        }
       }
       $('route-note').textContent = note;
     } else $('route-note').textContent = 'Пунктирная линия — только схема между городами, не тропа. Импортируй GPX для точного маршрута.';
@@ -500,6 +514,7 @@
     closeSheet,
     toast,
     openPoint,
+    refreshStats,
     resetTools: () => {
       addMode = false;
       measureMode = false;
