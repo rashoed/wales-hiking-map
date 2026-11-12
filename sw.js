@@ -1,5 +1,5 @@
-const VERSION = 'wales-atlas-v3';
-const SHELL = ['./', './index.html', './styles.css', './app.js', './manifest.webmanifest', './icons/trail.svg', './icons/icon-180.png', './icons/icon-512.png'];
+const VERSION = 'wales-atlas-v4';
+const SHELL = ['./', './index.html', './styles.css', './app.js', './trip-planner.js', './manifest.webmanifest', './icons/trail.svg', './icons/icon-180.png', './icons/icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(VERSION).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
 });
