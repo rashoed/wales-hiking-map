@@ -232,7 +232,7 @@
     signature = keyForTrack(segs);
     const saved = readPlan();
     plan = validPlan(saved, signature) ? saved : initialPlan();
-    if (!saved && validPlan(lastPublishedPlan, signature)) plan = lastPublishedPlan;
+    if (!validPlan(saved, signature) && validPlan(lastPublishedPlan, signature)) plan = lastPublishedPlan;
     if (selectedDay >= daysCount()) selectedDay = -1;
     redraw();
   }
@@ -248,27 +248,30 @@
   function svgProfile(lines, width = 320, height = 110) {
     const profile = node('div', 'trip-profile');
     const samples = [];
+    let along = 0;
     for (const line of lines) {
       for (let i = 0; i < line.length; i++) {
-        const ele = line[i][2];
-        if (Number.isFinite(ele)) samples.push(ele);
+        if (i > 0) along += geoDistance(line[i - 1], line[i]);
+        const elev = line[i][2];
+        if (Number.isFinite(elev)) samples.push({ height: elev, along });
       }
     }
     if (samples.length < 2) {
       profile.append(node('p', 'help', 'В GPX нет данных о высоте для этого этапа.'));
       return profile;
     }
-    const min = Math.floor(Math.min(...samples) / 25) * 25;
-    const max = Math.ceil(Math.max(...samples) / 25) * 25 || 1;
+    const min = Math.floor(samples.reduce((low, s) => Math.min(low, s.height), Infinity) / 25) * 25;
+    const max = Math.ceil(samples.reduce((high, s) => Math.max(high, s.height), -Infinity) / 25) * 25 || 1;
     const svg = document.createElementNS(ns, 'svg');
     svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
     svg.setAttribute('role', 'img');
     svg.setAttribute('aria-label', 'Профиль высот: от ' + min + ' до ' + max + ' метров');
-    const coords = samples.filter((_, i) => i % Math.max(1, Math.ceil(samples.length / 160)) === 0);
+    const step = Math.max(1, Math.ceil(samples.length / 160));
+    const coords = samples.filter((_, i) => i % step === 0);
     if (coords[coords.length - 1] !== samples[samples.length - 1]) coords.push(samples[samples.length - 1]);
-    const p = coords.map((v, i) => {
-      const x = 5 + i * (width - 10) / (coords.length - 1);
-      const y = 9 + (max - v) / Math.max(1, max - min) * (height - 25);
+    const p = coords.map(v => {
+      const x = 5 + (v.along - samples[0].along) / Math.max(1, along - samples[0].along) * (width - 10);
+      const y = 9 + (max - v.height) / Math.max(1, max - min) * (height - 25);
       return [x, y];
     });
     const area = document.createElementNS(ns, 'path');
@@ -401,6 +404,7 @@
     body.append(node('div', 'divider'), btn('← Ко всем этапам', openOverview));
   }
   function beginMove(i) {
+    atlas.resetTools();
     editBoundary = i;
     atlas.closeSheet();
     const hint = $('trip-hint');
