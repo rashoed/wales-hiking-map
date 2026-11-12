@@ -25,6 +25,11 @@
   let points = Array.isArray(original?.points) ? original.points.filter(validPoint) : STARTER;
   let segments = Array.isArray(original?.segments) ? normalizeSegments(original.segments) : [];
   let routeName = typeof original?.routeName === 'string' ? original.routeName : '';
+  // Local changes are never uploaded by this public static website.
+  let localChanged = typeof original?.localChanged === 'boolean' ? original.localChanged :
+    Boolean(original && (segments.length || JSON.stringify(points) !== JSON.stringify(STARTER)));
+  let sharedRevision = typeof original?.sharedRevision === 'string' ? original.sharedRevision : '';
+  let lastExportRevision = typeof original?.lastExportRevision === 'string' ? original.lastExportRevision : '';
   let map = null, markers = [], gpsMarker = null, gps = null, gpsWatch = null;
   let activePointId = null, addMode = false, measureMode = false, measurePoints = [];
   let toastTimer = 0;
@@ -34,9 +39,67 @@
   function normalizeSegments(input) {
     return input.filter(Array.isArray).map(seg => seg.filter(p => Array.isArray(p) && Number.isFinite(Number(p[0])) && Number.isFinite(Number(p[1]))).map(p => [Number(p[0]), Number(p[1]), p[2] == null ? null : Number(p[2])])).filter(seg => seg.length > 1);
   }
-  function save() {
-    try { localStorage.setItem(KEY, JSON.stringify({ points, segments, routeName })); }
+  function persist() {
+    try { localStorage.setItem(KEY, JSON.stringify({ points, segments, routeName, localChanged, sharedRevision, lastExportRevision })); }
     catch (_) { toast('Не удалось сохранить данные: место в памяти браузера закончилось. Сделай резервную копию.'); }
+  }
+  function save() {
+    localChanged = true;
+    lastExportRevision = '';
+    persist();
+  }
+  function isSharedData(data) {
+    return data && data.schema === 1 && typeof data.revision === 'string' &&
+      data.revision.length > 0 && Array.isArray(data.points) &&
+      Array.isArray(data.segments) && data.points.every(validPoint) &&
+      typeof data.routeName === 'string' &&
+      data.segments.every(seg => Array.isArray(seg) && seg.length > 1 && seg.every(p =>
+        Array.isArray(p) && p.length >= 2 && Number.isFinite(Number(p[0])) &&
+        Number.isFinite(Number(p[1])) && Math.abs(Number(p[0])) <= 180 && Math.abs(Number(p[1])) <= 90));
+  }
+  async function loadPublishedData(force = false) {
+    try {
+      const response = await fetch('./data/shared-data.json', { cache: 'no-store' });
+      if (response.status === 404) {
+        if (force) toast('Общий маршрут пока не опубликован в GitHub.');
+        return;
+      }
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const data = await response.json();
+      if (!isSharedData(data)) throw new Error('Некорректный формат общих данных');
+      if (localChanged && lastExportRevision === data.revision) {
+        localChanged = false;
+        sharedRevision = data.revision;
+        persist();
+        if (force) toast('Твои изменения уже опубликованы в GitHub.');
+        return;
+      }
+      if (localChanged && !force) return; // Never silently erase unsynced edits.
+      if (force && !window.confirm('Заменить текущие точки и трек опубликованной версией из GitHub? Локальные изменения будут потеряны.')) return;
+      if (!force && sharedRevision === data.revision) return;
+      points = data.points;
+      segments = normalizeSegments(data.segments);
+      routeName = data.routeName;
+      sharedRevision = data.revision;
+      localChanged = false;
+      lastExportRevision = '';
+      persist();
+      refreshStats(); refreshLines(); refreshMarkers();
+      if (segments.length) fitTrack();
+      if (force) { closeSheet(); toast('Опубликованный маршрут загружен.'); }
+    } catch (error) {
+      if (force) toast('Не удалось загрузить общие данные: ' + error.message);
+      else console.warn('Published route unavailable:', error);
+    }
+  }
+  function downloadSharedData() {
+    const revision = new Date().toISOString();
+    lastExportRevision = revision;
+    persist();
+    download('shared-data.json', JSON.stringify({
+      schema: 1, revision, routeName, points, segments
+    }), 'application/json');
+    toast('Файл скачан. Загрузите shared-data.json в папку data репозитория GitHub.');
   }
   function el(tag, className, text) {
     const node = document.createElement(tag);
@@ -131,7 +194,7 @@
       btn.append(el('span', '', (CATEGORIES[p.category] || CATEGORIES.maybe).icon));
       if (p.id === activePointId) btn.classList.add('selected');
       btn.addEventListener('click', event => { event.stopPropagation(); addMode = false; measureMode = false; setToolState(); openPoint(p.id); });
-      const marker = new maplibregl.Marker({ element: btn, anchor: 'bottom' }).setLngLat([Number(p.lng), Number(p.lat)]).addTo(map);
+      const marker = new maplibregl.Marker({ element: btn, anchor: 'center' }).setLngLat([Number(p.lng), Number(p.lat)]).addTo(map);
       markers.push(marker);
     });
   }
@@ -334,6 +397,11 @@
     body.append(button('＋ Добавить по ссылке', showFromLink));
     body.append(button('＋ Поставить точку на карте', () => { closeSheet(); addMode = true; measureMode = false; setToolState(); }));
     body.append(el('div','divider'));
+    body.append(el('div','section-label','ОДИН МАРШРУТ НА ВСЕХ УСТРОЙСТВАХ'));
+    body.append(button('↓ Скачать общие данные для GitHub', downloadSharedData, 'primary'));
+    body.append(button('↻ Загрузить опубликованную версию', () => loadPublishedData(true)));
+    body.append(para('Чтобы тот же трек и точки появились на телефоне, помести скачанный shared-data.json в папку data/ репозитория. После публикации GitHub Pages данные загрузятся автоматически на новых устройствах. Изменения в браузере остаются локальными до следующей публикации файла.', 'help'));
+    body.append(el('div','divider'));
     body.append(el('div','section-label','РЕЗЕРВНАЯ КОПИЯ'));
     body.append(button('↓ Скачать данные JSON', () => download('wales-trail-backup.json', JSON.stringify({schema:1,points,segments,routeName},null,2),'application/json')));
     body.append(button('↑ Восстановить из JSON', () => $('backup-file').click()));
@@ -394,6 +462,7 @@
     }));
     document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeSheet();addMode=false;measureMode=false;measurePoints=[];setToolState();refreshLines();}});
     refreshStats();initMap();
+    loadPublishedData();
     if ('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
   }
   init();
