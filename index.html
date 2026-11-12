@@ -10,9 +10,10 @@
   <link rel="icon" href="./icons/trail.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="./icons/icon-180.png" />
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.15.0/dist/maplibre-gl.css" />
-  <link rel="stylesheet" href="./styles.css?v=3" />
+  <link rel="stylesheet" href="./styles.css?v=4" />
   <script defer src="https://unpkg.com/maplibre-gl@5.15.0/dist/maplibre-gl.js"></script>
-  <script defer src="./app.js?v=3"></script>
+  <script defer src="./app.js?v=4"></script>
+  <script defer src="./trip-planner.js?v=4"></script>
 </head>
 <body>
   <div id="map" role="application" aria-label="Интерактивная карта Уэльса"></div>
@@ -45,8 +46,11 @@
       <div><strong id="route-time">—</strong><small>Время ходьбы</small></div>
     </div>
     <p id="route-note">Пунктирная линия — только схема между городами, не тропа. Импортируй GPX для точного маршрута.</p>
-    <div class="status-actions"><button id="import-gpx" class="primary">↑ Импорт GPX</button><button id="open-list" class="secondary">Места <span id="point-count">0</span></button></div>
+    <div class="status-actions"><button id="import-gpx" class="primary">↑ Импорт GPX</button><button id="open-list" class="secondary">Места <span id="point-count">0</span></button><button id="open-stages" class="secondary">Дни <span id="stage-count">—</span></button></div>
   </aside>
+  <button id="trip-current" class="trip-current glass" hidden></button>
+  <div id="trip-hint" class="trip-edit-hint glass" hidden></div>
+  <button id="trip-cancel" class="trip-cancel glass" hidden>Отмена</button>
   <button id="menu-open" class="more-button glass" title="Импорт, экспорт, добавление по ссылке" aria-label="Открыть меню">⋯</button>
   <div class="backdrop" id="backdrop" hidden></div>
   <section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
