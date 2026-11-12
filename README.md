@@ -2,7 +2,7 @@
 
 A lightweight, mobile-first personal hiking map for Wales and the Offa's Dyke Path.
 
-## Current MVP (v0.1)
+## Current MVP (v0.2)
 
 - Interactive MapLibre map with a minimalist OpenFreeMap basemap.
 - Initial points: Chepstow, Tintern Abbey, Monmouth, Pandy, Hay-on-Wye.
@@ -46,7 +46,7 @@ Check the route's accuracy, diversions and licensing before using/distributing t
 
 ## Privacy and backup
 
-All custom points and imported tracks stay in browser `localStorage`. There is **no login or synchronization between devices**. Export a backup through the ⋯ menu and keep the downloaded JSON somewhere safe. Browser data can be cleared or evicted by iOS.
+New edits and imported tracks stay in browser `localStorage`. To share an itinerary across devices, use **⋯ → Скачать общие данные для GitHub** and publish the downloaded file as `data/shared-data.json`. On a fresh device, the app loads that file automatically. This is **manual publication, not live synchronization**. Export a backup through the ⋯ menu and keep the downloaded JSON somewhere safe. Browser data can be cleared or evicted by iOS.
 
 GPS uses the device browser's geolocation, with permission. It will not keep tracking reliably with iPhone screen locked. Map tiles require network requests to the provider. External photos load only if a point card is opened.
 
@@ -67,3 +67,10 @@ Plain HTML/CSS/JavaScript + MapLibre GL JS v5 + OpenFreeMap. No build step or ap
 OpenFreeMap documentation: https://openfreemap.org/quick_start/
 
 **Safety:** this is a planning prototype, not a certified navigation system. Carry a separately downloaded offline map and GPX, and do not rely on a website alone in remote terrain.
+
+## v0.2 — Map markers and shared itinerary
+
+- Fixed the MapLibre marker positioning conflict (CSS `transform` / `position` on the marker element). Marker symbols are anchored to their actual coordinates.
+- Added one-file publication for **both GPX and points**. On the device with your trip, export `shared-data.json` via the `⋯` menu and upload it to this repository's `data/` folder; wait for Pages to publish and open/refresh the app on a second device.
+- Old local itineraries are protected from being overwritten automatically. The menu has a confirmed action to replace local data with the published version.
+- The web app remains static; it cannot automatically send changes to GitHub from a browser without a secure authenticated service. This version supports controlled, manual publication instead of true real-time sync.
